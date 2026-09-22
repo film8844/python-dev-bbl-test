@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login — Appointment Booking</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+
+<div class="w-full max-w-sm bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+  <h1 class="text-xl font-semibold text-slate-900">Appointment Booking</h1>
+  <p class="mt-1 text-sm text-slate-500">Sign in to manage your bookings</p>
+
+  <form id="login-form" class="mt-6 space-y-4">
+    <div>
+      <label for="username" class="block text-sm font-medium text-slate-700">Username</label>
+      <input id="username" name="username" type="text" required autocomplete="username"
+             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900">
+    </div>
+    <div>
+      <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password"
+             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900">
+    </div>
+
+    <p id="error" class="hidden rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700"></p>
+
+    <button id="submit" type="submit"
+            class="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+      Sign in
+    </button>
+  </form>
+
+  <div class="mt-6 border-t border-slate-200 pt-4 text-xs text-slate-500">
+    <p class="font-medium text-slate-600">Demo accounts</p>
+    <p class="mt-1">admin / admin1234 &nbsp;·&nbsp; user1 / user1234 &nbsp;·&nbsp; user2 / user2234</p>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById("login-form");
+const errorBox = document.getElementById("error");
+const submitBtn = document.getElementById("submit");
+
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.classList.remove("hidden");
+}
+
+async function readBody(response) {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    return { detail: `${response.status} ${response.statusText}: ${text.slice(0, 150)}` };
+  }
+}
+
+function detailToText(detail) {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map((item) => item.msg || JSON.stringify(item)).join(", ");
+  return null;
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  errorBox.classList.add("hidden");
+  submitBtn.disabled = true;
+
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value,
+      }),
+    });
+
+    const data = await readBody(response);
+
+    if (!response.ok) {
+      showError(detailToText(data && data.detail) || `Login failed (${response.status})`);
+      return;
+    }
+
+    sessionStorage.setItem("access_token", data.access_token);
+    sessionStorage.setItem("username", data.username);
+    sessionStorage.setItem("is_admin", String(data.is_admin));
+    window.location.href = "/static/booking.html";
+  } catch (err) {
+    showError("Cannot reach the server");
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
